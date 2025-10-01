@@ -1,7 +1,6 @@
 import os
 import unittest
 
-
 class PollReader():
     """
     A class for reading and analyzing polling data.
@@ -60,16 +59,29 @@ class PollReader():
             if not line:
                 continue
 
-            # split up the row by column
-            seperated = line.split(',')
+          
+            separated = line.split(',')
+            # The CSV file has 5 columns, so we must check for 5.
+            if len(separated) != 5:
+                continue
 
             # map each part of the row to the correct column
-            self.data_dict['month'].append(seperated[0])
-            self.data_dict['date'].append(int(seperated[1]))
-            self.data_dict['sample'].append(int(seperated[2]))
-            self.data_dict['sample type'].append(seperated[3])
-            self.data_dict['Harris result'].append(float(seperated[4]))
-            self.data_dict['Trump result'].append(float(seperated[5]))
+            self.data_dict['month'].append(separated[0].strip())
+            self.data_dict['date'].append(int(separated[1].strip()))
+
+            # The 'sample' column (index 2) contains both size and type, e.g., "1880 LV"
+            # We need to split it to get both pieces of information.
+            sample_info = separated[2].strip().split(' ')
+            self.data_dict['sample'].append(int(sample_info[0]))
+            if len(sample_info) > 1:
+                self.data_dict['sample type'].append(sample_info[1])
+            else:
+                self.data_dict['sample type'].append(None) # Handle cases with no sample type
+
+            # Harris and Trump results are at index 3 and 4 now
+            self.data_dict['Harris result'].append(float(separated[3].strip().replace('%', '')))
+            self.data_dict['Trump result'].append(float(separated[4].strip().replace('%', '')))
+
 
 
     def highest_polling_candidate(self):
@@ -86,20 +98,21 @@ class PollReader():
         h = self.data_dict["Harris result"]
         t = self.data_dict["Trump result"]
 
+        if not h or not t:
+            return "No data available"
+
         h_max = max(h)
         t_max = max(t)
 
         if h_max > t_max:
-            return f"Harris with {h_max}"
+            return f"Harris with {h_max:.1%}"
         elif t_max > h_max:
-            return f"Trump with {t_max}"
+            return f"Trump with {t_max:.1%}"
         else:
-            return f"EVEN with {h_max}"
-
-
-
+            return f"EVEN with {h_max:.1%}"
 
     def likely_voter_polling_average(self):
+        
         """
         Calculate the average polling percentage for each candidate among likely voters.
 
@@ -107,6 +120,27 @@ class PollReader():
             tuple: A tuple containing the average polling percentages for Harris and Trump
                    among likely voters, in that order.
         """
+        type_list = self.data_dict['sample type']
+        h = self.data_dict["Harris result"]
+        t = self.data_dict["Trump result"]
+
+        hsum = 0.0
+        tsum = 0.0
+        cnt = 0
+
+        for i in range(len(type_list)):
+            # Check if sample type is 'LV'
+            if type_list[i] and 'LV' in str(type_list[i]).upper():
+                hsum += h[i]
+                tsum += t[i]
+                cnt += 1
+
+        if cnt == 0:
+            return (0.0, 0.0)
+
+        return (hsum / cnt, tsum / cnt)
+
+
         
 
 
@@ -121,8 +155,28 @@ class PollReader():
             tuple: A tuple containing the net change for Harris and Trump, in that order.
                    Positive values indicate an increase, negative values indicate a decrease.
         """
-        pass
 
+        h = self.data_dict["Harris result"]
+        t = self.data_dict["Trump result"]
+
+        if len(h) < 60:
+            return (0.0, 0.0)
+
+        latest_harris   = h[:30]
+        earliest_harris = h[-30:]
+        avg_latest_harris   = sum(latest_harris) / 30.0
+        avg_earliest_harris = sum(earliest_harris) / 30.0
+        harris_change = avg_latest_harris - avg_earliest_harris
+
+        latest_trump   = t[:30]
+        earliest_trump = t[-30:]
+        avg_latest_trump   = sum(latest_trump) / 30.0
+        avg_earliest_trump = sum(earliest_trump) / 30.0
+        trump_change = avg_latest_trump - avg_earliest_trump
+
+        return (harris_change, trump_change)
+    # 0–100 → 0–1
+        return (harris_change, trump_change)
 
 class TestPollReader(unittest.TestCase):
     """

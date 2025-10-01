@@ -55,18 +55,21 @@ class PollReader():
         """
 
         # iterate through each row of the data
-        for i in self.raw_data:
+        for line in self.raw_data[1:]:
+            line = line.strip()
+            if not line:
+                continue
 
             # split up the row by column
-            seperated = i.split(' ')
+            seperated = line.split(',')
 
             # map each part of the row to the correct column
             self.data_dict['month'].append(seperated[0])
             self.data_dict['date'].append(int(seperated[1]))
             self.data_dict['sample'].append(int(seperated[2]))
-            self.data_dict['sample type'].append(seperated[2])
-            self.data_dict['Harris result'].append(float(seperated[3]))
-            self.data_dict['Trump result'].append(float(seperated[4]))
+            self.data_dict['sample type'].append(seperated[3])
+            self.data_dict['Harris result'].append(float(seperated[4]))
+            self.data_dict['Trump result'].append(float(seperated[5]))
 
 
     def highest_polling_candidate(self):
@@ -80,7 +83,20 @@ class PollReader():
             str: A string indicating the candidate with the highest polling percentage or EVEN,
              and the highest polling percentage.
         """
-        pass
+        h = self.data_dict["Harris result"]
+        t = self.data_dict["Trump result"]
+
+        h_max = max(h)
+        t_max = max(t)
+
+        if h_max > t_max:
+            return f"Harris with {h_max}"
+        elif t_max > h_max:
+            return f"Trump with {t_max}"
+        else:
+            return f"EVEN with {h_max}"
+
+
 
 
     def likely_voter_polling_average(self):
@@ -91,7 +107,7 @@ class PollReader():
             tuple: A tuple containing the average polling percentages for Harris and Trump
                    among likely voters, in that order.
         """
-        pass
+        
 
 
     def polling_history_change(self):
